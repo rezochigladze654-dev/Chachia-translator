@@ -1,1 +1,21 @@
 
+{
+  "name": "Chachia Translator",
+  "short_name": "Chachia",
+  "description": "ქართული და გერმანული თარჯიმანი",
+  "lang": "ka",
+  "start_url": "/Chachia-translator/",
+  "scope": "/Chachia-translator/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b1224",
+  "theme_color": "#101b36",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
+
