@@ -1,5 +1,7 @@
 <!doctype html>
 <html lang="ka">
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#101b36">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -18,6 +20,15 @@ textarea{width:100%;min-height:92px;resize:vertical;border-radius:13px;border:1p
 footer{text-align:center;color:#71819d;font-size:11px;padding:14px}
 </style>
 </head>
+ 
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js");
+  });
+}
+</script>
+
 <body>
 <main>
  <header class="brand"><div class="logo">🎙️</div><h1>Chachia Translator</h1><p>ქართული ↔ Deutsch · ხმოვანი თარჯიმანი</p></header>
