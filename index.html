@@ -133,7 +133,6 @@ function cleanSpeech(text){
 // მიკროფონის გამორთვა
 function stopMic(message='მიკროფონი გამორთულია'){
 
- // სესია უქმდება მანამ, სანამ abort გამოიძახება
  sessionId++;
 
  const old=recognition;
@@ -159,7 +158,7 @@ function stopMic(message='მიკროფონი გამორთულ�
 // მიკროფონის ჩართვა
 function startMic(lang){
 
- // მეორე დაჭერა იმავე ღილაკზე = გამორთვა
+ // იმავე ღილაკზე მეორე დაჭერა = გამორთვა
  if(activeLanguage===lang){
   stopMic('🔴 მიკროფონი გამორთულია');
   return;
@@ -196,8 +195,9 @@ function startMic(lang){
   ?'🎤 გისმენ... ქართულად ილაპარაკე'
   :'🎤 Ich höre zu... Sprich Deutsch';
 
+ // შესწორებული ხმის ამოცნობა
  rec.onresult=function(event){
-  if(id!==sessionId||finished)return;
+  if(id!==sessionId || finished)return;
 
   let text='';
 
@@ -212,12 +212,14 @@ function startMic(lang){
 
   finished=true;
 
-  // ვაუქმებთ მოსმენის სესიას
-  stopMic('ამოცნობა დასრულდა ✓');
-
+  // ტექსტი ჯერ ჩაიწეროს
   $('source').value=text;
+
+  // შემდეგ დაიწყოს თარგმნა
   clearTimeout(timer);
   translateText();
+
+  $('status').textContent='ხმა ამოცნობილია ✓';
  };
 
  rec.onerror=function(event){
