@@ -313,30 +313,28 @@ function detectLanguage(text) {
 }
 
 // ზედიზედ გამეორებული სიტყვების გასუფთავება
-function cleanSpeech(text) {
- const words = text.trim().split(/\s+/);
- const result = [];
+function cleanSpeech(text) function cleanSpeech(text) {
+  let words = text.trim().split(/\s+/);
+  let result = [];
 
- for (const word of words) {
-  if (!word) continue;
+  for (let word of words) {
+    if (!word) continue;
 
-  const previous = result[result.length - 1];
+    const norm = w => w
+      .toLocaleLowerCase()
+      .replace(/[.,!?;:„“"()[\]]/g, '');
 
-  const normalize = value =>
-   value.toLocaleLowerCase()
-    .replace(/[.,!?;:„“"()[\]]/g,'');
+    const current = norm(word);
+    const previous = result.length
+      ? norm(result[result.length - 1])
+      : '';
 
-  if (
-   previous &&
-   normalize(previous) === normalize(word)
-  ) {
-   continue;
+    if (current === previous) continue;
+
+    result.push(word);
   }
 
-  result.push(word);
- }
-
- return result.join(' ');
+  return result.join(' ');
 }
 
 // თარგმნა
