@@ -1,4 +1,4 @@
-space-betweenl>
+<!doctype html>
 <html lang="ka">
 <head>
 <meta charset="utf-8">
@@ -36,12 +36,11 @@ footer{text-align:center;color:#71819d;font-size:11px;padding:14px}
   <div class="label"><span>თარგმანი</span><span class="pill" id="targetLang">Deutsch</span></div>
   <div class="result" id="translated">თარგმანი აქ გამოჩნდება…</div>
   <div class="row" style="margin-top:12px">
-   <button class="small" id="translate">თარგმნა</button>
    <button class="small" id="speak">🔊 წაკითხვა</button>
    <button class="small" id="copy">კოპირება</button>
   </div>
  </section>
- <p class="notice">ეს პირველი საცდელი ვერსიაა. თარგმნისთვის საჭიროა ინტერნეტი. ავტომატური ენის ამოცნობა ჯერ სრულად ჩართული არ არის — გამოიყენე ქართული ან გერმანული მიკროფონის ღილაკი.</p>
+ <p class="notice">აკრიფე ქართულად ან გერმანულად — თარგმანი ავტომატურად გამოჩნდება. თარგმნისთვის საჭიროა ინტერნეტი.</p>
  <footer>Chachia Translator · პირველი ვერსია</footer>
 </main>
 <script>
@@ -56,15 +55,27 @@ function setDirection(lang){
 }
 async function translate(){
  const text=$('source').value.trim();
- if(!text){$('translated').textContent='თარგმანი აქ გამოჩნდება…';setStatus('ჯერ ჩაწერე ტექსტი ან ილაპარაკე.');return}
+ if(!text){$('translated').textContent='თარგმანი აქ გამოჩნდება…';setStatus('დაიწყე ტექსტის აკრეფა ან ილაპარაკე.');return}
  const request=++translationRequest;
  $('translated').textContent='ვთარგმნი…';
- const pair=from==='ka'?'ka|de':'de|ka';
+ const sl=from==='ka'?'ka':'de', tl=from==='ka'?'de':'ka';
+ // პირველ რიგში ვცდით Google-ის თარგმნის endpoint-ს, შემდეგ MyMemory-ს.
  try{
-  const url='https://api.mymemory.translated.net/get?q='+encodeURIComponent(text)+'&langpair='+pair;
-  const res=await fetch(url); if(!res.ok) throw new Error('network');
-  const data=await res.json();
-  const result=data?.responseData?.translatedText;
+  let result='';
+  try{
+   const googleUrl='https://translate.googleapis.com/translate_a/single?client=gtx&sl='+sl+'&tl='+tl+'&dt=t&q='+encodeURIComponent(text);
+   const gr=await fetch(googleUrl);
+   if(gr.ok){
+    const gd=await gr.json();
+    result=(gd?.[0]||[]).map(part=>part?.[0]||'').join('').trim();
+   }
+  }catch(e){}
+  if(!result){
+   const url='https://api.mymemory.translated.net/get?q='+encodeURIComponent(text)+'&langpair='+sl+'|'+tl;
+   const res=await fetch(url); if(!res.ok) throw new Error('network');
+   const data=await res.json();
+   result=data?.responseData?.translatedText||'';
+  }
   if(!result) throw new Error('empty');
   if(request!==translationRequest)return;
   $('translated').textContent=result;
@@ -76,8 +87,11 @@ async function translate(){
  }
 }
 function scheduleTranslation(){
+ const value=$('source').value;
+ if(/[\u10A0-\u10FF]/.test(value)) setDirection('ka');
+ else if(/[A-Za-zÄÖÜäöüß]/.test(value)) setDirection('de');
  clearTimeout(translationTimer);
- translationTimer=setTimeout(()=>translate(),700);
+ translationTimer=setTimeout(()=>translate(),600);
 }
 function listen(lang){
  if(recognition && listeningLang===lang){
@@ -133,7 +147,6 @@ function listen(lang){
 $('kaMic').onclick=()=>listen('ka');
 $('deMic').onclick=()=>listen('de');
 $('source').addEventListener('input',scheduleTranslation);
-$('translate').onclick=()=>{clearTimeout(translationTimer);translate()};
 $('speak').onclick=()=>{
  const t=$('translated').textContent.trim();
  if(!t||t.includes('აქ გამოჩნდება')||t.includes('ვერ მოხერხდა'))return;
