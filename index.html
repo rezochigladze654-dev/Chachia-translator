@@ -8,46 +8,135 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Chachia Translator</title>
 <link rel="manifest" href="./manifest.json">
+
 <style>
 *{box-sizing:border-box}
+
+html{
+ width:100%;
+ min-height:100%;
+}
+
 body{
- margin:0;padding:18px;background:#101b36;color:white;
- font-family:Arial,sans-serif;min-height:100vh
+ margin:0;
+ padding:0;
+ width:100%;
+ min-height:100vh;
+ min-height:100dvh;
+ background:#101b36;
+ color:white;
+ font-family:Arial,sans-serif;
 }
-main{max-width:600px;margin:auto}
-h1{text-align:center;font-size:27px;margin:15px 0 5px}
-.sub{text-align:center;color:#aab9d6;margin-bottom:25px}
+
+main{
+ width:100%;
+ max-width:560px;
+ margin:auto;
+ padding:22px 16px 34px;
+ min-height:100vh;
+ min-height:100dvh;
+}
+
+h1{
+ text-align:center;
+ font-size:27px;
+ margin:15px 0 5px;
+}
+
+.sub{
+ text-align:center;
+ color:#aab9d6;
+ margin-bottom:25px;
+}
+
 .panel{
- background:#1b2a49;border:1px solid #344769;
- border-radius:18px;padding:16px;margin:14px 0
+ width:100%;
+ background:#1b2a49;
+ border:1px solid #344769;
+ border-radius:18px;
+ padding:16px;
+ margin:13px 0;
 }
-label{display:block;font-weight:bold;margin-bottom:12px}
+
+label{
+ display:block;
+ font-weight:bold;
+ margin-bottom:12px;
+}
+
 textarea{
- width:100%;min-height:125px;resize:vertical;
- border:0;border-radius:12px;padding:14px;
- background:#0e1930;color:white;font-size:18px;
- outline:none;line-height:1.5
+ display:block;
+ width:100%;
+ min-height:105px;
+ resize:vertical;
+ border:0;
+ border-radius:12px;
+ padding:14px;
+ background:#0e1930;
+ color:white;
+ font-size:18px;
+ outline:none;
+ line-height:1.5;
 }
+
 textarea::placeholder{color:#8999b8}
+
 button{
- border:0;border-radius:12px;padding:13px 15px;
- font-size:15px;font-weight:bold;cursor:pointer
+ border:0;
+ border-radius:12px;
+ padding:13px 15px;
+ font-size:15px;
+ font-weight:bold;
+ cursor:pointer;
 }
+
 button:disabled{opacity:.5}
-.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
-.actions button{flex:1}
+
+.actions{
+ display:flex;
+ gap:9px;
+ flex-wrap:wrap;
+ margin-top:12px;
+}
+
+.actions button{flex:1;min-width:0}
+
 .mic{background:#315c9d;color:white}
 .mainbtn{background:#3979db;color:white}
 .secondary{background:#344563;color:white}
+
 #translated{
- min-height:100px;white-space:pre-wrap;
- overflow-wrap:anywhere;font-size:19px;
- line-height:1.5;color:#fff
+ min-height:100px;
+ white-space:pre-wrap;
+ overflow-wrap:anywhere;
+ font-size:19px;
+ line-height:1.5;
+ color:white;
 }
-.status{text-align:center;color:#b8c9e8;font-size:14px;min-height:22px}
-.footer{text-align:center;color:#8294b6;font-size:12px;margin:25px 0}
+
+.status{
+ text-align:center;
+ color:#b8c9e8;
+ font-size:14px;
+ min-height:22px;
+}
+
+.footer{
+ text-align:center;
+ color:#8294b6;
+ font-size:12px;
+ margin:25px 0;
+}
+
+@media(max-width:360px){
+ main{padding:12px 10px 30px}
+ .panel{padding:13px}
+ .actions button{font-size:12px;padding:12px 5px}
+ h1{font-size:24px}
+}
 </style>
 </head>
+
 <body>
 <main>
 <h1>Chachia Translator</h1>
@@ -56,6 +145,7 @@ button:disabled{opacity:.5}
 <div class="panel">
 <label>ჩაწერე ტექსტი</label>
 <textarea id="source" placeholder="დაწერე ქართულად ან გერმანულად..."></textarea>
+
 <div class="actions">
 <button class="mic" id="kaMic">🎤 ქართული</button>
 <button class="mic" id="deMic">🎤 Deutsch</button>
@@ -67,6 +157,7 @@ button:disabled{opacity:.5}
 <div class="panel">
 <label>თარგმანი</label>
 <div id="translated">აქ გამოჩნდება თარგმანი...</div>
+
 <div class="actions">
 <button class="mainbtn" id="speakBtn">🔊 მოსმენა</button>
 <button class="secondary" id="copyBtn">📋 კოპირება</button>
@@ -80,47 +171,45 @@ button:disabled{opacity:.5}
 <script>
 const $ = id => document.getElementById(id);
 
-let timer = null;
-let requestNumber = 0;
-let recognition = null;
-let listening = false;
-let micSession = 0;
+let timer=null;
+let requestNumber=0;
+let recognition=null;
+let listening=false;
+let micSession=0;
 
 function isGeorgian(text){
  return /[\u10A0-\u10FF]/.test(text);
 }
 
-// ხმოვანი ტექსტის გაწმენდა
 function cleanSpeech(text){
- let words = text
+ let words=text
   .replace(/[\u200B-\u200D\uFEFF]/g,'')
   .trim()
   .split(/\s+/)
   .filter(Boolean);
 
- const norm = word => word
+ const norm=word=>word
   .toLocaleLowerCase()
   .normalize('NFC')
   .replace(/[.,!?;:„“"'()[\]{}،؛]/g,'');
 
- let result = [];
+ let result=[];
 
  for(const word of words){
-  const key = norm(word);
-  if(!key) continue;
+  const key=norm(word);
+  if(!key)continue;
 
-  // ზედიზედ გამეორებული სიტყვის მოცილება
-  if(result.length && norm(result[result.length-1]) === key){
+  if(result.length && norm(result[result.length-1])===key){
    continue;
   }
 
   result.push(word);
  }
 
- // გამეორებული ფრაზების მოცილება
- let changed = true;
+ let changed=true;
+
  while(changed){
-  changed = false;
+  changed=false;
 
   for(let size=Math.min(12,Math.floor(result.length/2));size>=1;size--){
    const first=result.slice(-size*2,-size).map(norm).join(' ');
@@ -155,7 +244,7 @@ async function translateText(){
    +target+'&dt=t&q='+encodeURIComponent(original);
 
   const response=await fetch(url);
-  if(!response.ok) throw new Error('Google error');
+  if(!response.ok)throw new Error('Google error');
 
   const data=await response.json();
   const result=data[0].map(item=>item[0]).join('');
@@ -197,7 +286,6 @@ function scheduleTranslation(){
 
 $('source').addEventListener('input',scheduleTranslation);
 
-// მიკროფონის ღილაკების მდგომარეობა
 function micButtons(disabled){
  $('kaMic').disabled=disabled;
  $('deMic').disabled=disabled;
@@ -225,7 +313,6 @@ function startMic(language){
   return;
  }
 
- // ძველი სესიის გაუქმება
  if(recognition){
   stopMic();
  }
@@ -252,7 +339,6 @@ function startMic(language){
 
   let parts=[];
 
-  // ვიღებთ მხოლოდ ახალ, საბოლოო შედეგებს
   for(let i=event.resultIndex;i<event.results.length;i++){
    const item=event.results[i];
 
@@ -261,7 +347,7 @@ function startMic(language){
    }
   }
 
-  let transcript=cleanSpeech(parts.join(' '));
+  const transcript=cleanSpeech(parts.join(' '));
 
   if(!transcript)return;
 
