@@ -17,11 +17,8 @@ html,body{
  margin:0;
  padding:0;
  width:100%;
+ min-width:100%;
  min-height:100%;
-}
-
-html{
- background:#101b36;
 }
 
 body{
@@ -184,7 +181,6 @@ let timer=null;
 let requestNumber=0;
 let recognition=null;
 let micSession=0;
-let listening=false;
 
 function isGeorgian(text){
  return /[\u10A0-\u10FF]/.test(text);
@@ -300,31 +296,16 @@ function micButtons(disabled){
  $('deMic').disabled=disabled;
 }
 
-function finishMic(session){
- if(session!==micSession)return;
-
- recognition=null;
- listening=false;
- micButtons(false);
-}
-
 function stopMic(){
  micSession++;
 
- const old=recognition;
- recognition=null;
- listening=false;
- micButtons(false);
-
- if(old){
-  old.onresult=null;
-  old.onerror=null;
-  old.onend=null;
-
-  try{
-   old.stop();
-  }catch(e){}
+ if(recognition){
+  const old=recognition;
+  recognition=null;
+  try{old.abort();}catch(e){}
  }
+
+ micButtons(false);
 }
 
 function startMic(language){
@@ -332,20 +313,18 @@ function startMic(language){
   window.webkitSpeechRecognition;
 
  if(!SpeechRecognition){
-  $('status').textContent='მიკროფონი Chrome-ში მიუწვდომელია';
+  $('status').textContent='ამ ბრაუზერში მიკროფონი მიუწვდომელია';
   return;
  }
 
- if(listening){
+ if(recognition){
   stopMic();
-  return;
  }
 
- const session=++micSession;
+ const mySession=++micSession;
  const current=new SpeechRecognition();
 
  recognition=current;
- listening=true;
  micButtons(true);
 
  let handled=false;
@@ -358,17 +337,19 @@ function startMic(language){
  $('status').textContent='🎤 გისმენ...';
 
  current.onresult=function(event){
-  if(session!==micSession||handled)return;
+  if(mySession!==micSession||handled)return;
 
-  let transcript='';
+  let parts=[];
 
   for(let i=event.resultIndex;i<event.results.length;i++){
-   if(event.results[i].isFinal){
-    transcript+=event.results[i][0].transcript+' ';
+   const item=event.results[i];
+
+   if(item.isFinal){
+    parts.push(item[0].transcript);
    }
   }
 
-  transcript=cleanSpeech(transcript);
+  const transcript=cleanSpeech(parts.join(' '));
 
   if(!transcript)return;
 
@@ -376,26 +357,18 @@ function startMic(language){
 
   $('source').value=transcript;
   clearTimeout(timer);
-
   translateText();
 
   $('status').textContent='ამოცნობა დასრულდა';
 
-  try{
-   current.stop();
-  }catch(e){}
+  try{current.stop();}catch(e){}
  };
 
  current.onerror=function(event){
-  if(session!==micSession)return;
+  if(mySession!==micSession)return;
 
-  if(event.error==='aborted'){
-   finishMic(session);
-   if(!handled)$('status').textContent='მზად არის';
-   return;
-  }
-
-  finishMic(session);
+  recognition=null;
+  micButtons(false);
 
   if(event.error==='not-allowed'){
    $('status').textContent='მიკროფონის ნებართვა ჩართე';
@@ -407,9 +380,10 @@ function startMic(language){
  };
 
  current.onend=function(){
-  if(session!==micSession)return;
+  if(mySession!==micSession)return;
 
-  finishMic(session);
+  recognition=null;
+  micButtons(false);
 
   if(!handled){
    $('status').textContent='მზად არის';
@@ -419,8 +393,11 @@ function startMic(language){
  try{
   current.start();
  }catch(error){
-  finishMic(session);
-  $('status').textContent='მიკროფონი ვერ ჩაირთო. კიდევ სცადე';
+  if(mySession===micSession){
+   recognition=null;
+   micButtons(false);
+   $('status').textContent='მიკროფონი ვერ ჩაირთო';
+  }
  }
 }
 
