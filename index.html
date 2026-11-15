@@ -12,29 +12,31 @@
 <style>
 *{box-sizing:border-box}
 
-html{
+html,body{
+ margin:0;
+ padding:0;
  width:100%;
+ min-width:100%;
  min-height:100%;
 }
 
 body{
- margin:0;
- padding:0;
- width:100%;
- min-height:100vh;
- min-height:100dvh;
  background:#101b36;
  color:white;
  font-family:Arial,sans-serif;
+ min-height:100vh;
+ min-height:100dvh;
 }
 
 main{
  width:100%;
- max-width:560px;
- margin:auto;
- padding:22px 16px 34px;
+ max-width:none;
  min-height:100vh;
  min-height:100dvh;
+ margin:0;
+ padding:18px;
+ padding-top:calc(18px + env(safe-area-inset-top));
+ padding-bottom:calc(25px + env(safe-area-inset-bottom));
 }
 
 h1{
@@ -55,7 +57,7 @@ h1{
  border:1px solid #344769;
  border-radius:18px;
  padding:16px;
- margin:13px 0;
+ margin:14px 0;
 }
 
 label{
@@ -67,7 +69,7 @@ label{
 textarea{
  display:block;
  width:100%;
- min-height:105px;
+ min-height:125px;
  resize:vertical;
  border:0;
  border-radius:12px;
@@ -99,7 +101,10 @@ button:disabled{opacity:.5}
  margin-top:12px;
 }
 
-.actions button{flex:1;min-width:0}
+.actions button{
+ flex:1;
+ min-width:0;
+}
 
 .mic{background:#315c9d;color:white}
 .mainbtn{background:#3979db;color:white}
@@ -129,7 +134,7 @@ button:disabled{opacity:.5}
 }
 
 @media(max-width:360px){
- main{padding:12px 10px 30px}
+ main{padding-left:10px;padding-right:10px}
  .panel{padding:13px}
  .actions button{font-size:12px;padding:12px 5px}
  h1{font-size:24px}
@@ -174,7 +179,6 @@ const $ = id => document.getElementById(id);
 let timer=null;
 let requestNumber=0;
 let recognition=null;
-let listening=false;
 let micSession=0;
 
 function isGeorgian(text){
@@ -297,7 +301,6 @@ function stopMic(){
  if(recognition){
   const old=recognition;
   recognition=null;
-  listening=false;
   try{old.abort();}catch(e){}
  }
 
@@ -321,7 +324,6 @@ function startMic(language){
  const current=new SpeechRecognition();
 
  recognition=current;
- listening=true;
  micButtons(true);
 
  let handled=false;
@@ -334,8 +336,7 @@ function startMic(language){
  $('status').textContent='🎤 გისმენ...';
 
  current.onresult=function(event){
-  if(mySession!==micSession)return;
-  if(handled)return;
+  if(mySession!==micSession||handled)return;
 
   let parts=[];
 
@@ -365,7 +366,6 @@ function startMic(language){
  current.onerror=function(event){
   if(mySession!==micSession)return;
 
-  listening=false;
   recognition=null;
   micButtons(false);
 
@@ -381,7 +381,6 @@ function startMic(language){
  current.onend=function(){
   if(mySession!==micSession)return;
 
-  listening=false;
   recognition=null;
   micButtons(false);
 
@@ -394,7 +393,6 @@ function startMic(language){
   current.start();
  }catch(error){
   if(mySession===micSession){
-   listening=false;
    recognition=null;
    micButtons(false);
    $('status').textContent='მიკროფონი ვერ ჩაირთო';
