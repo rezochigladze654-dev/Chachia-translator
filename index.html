@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101b35">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Chachia">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="icon" type="image/png" href="./icon-192.png">
 <link rel="manifest" href="./manifest.json">
 <title>Chachia Translator</title>
 <style>
@@ -21,6 +26,11 @@ footer{text-align:center;color:#71819d;font-size:11px;padding:14px}
 </head>
 <body>
 <main>
+
+ <section class="card" id="installCard" style="text-align:center">
+  <button class="btn primary" id="installApp" type="button" style="width:100%">📲 აპლიკაციის დაყენება</button>
+  <div class="sub" id="installHelp">თუ ღილაკი გააქტიურდა, დააჭირე და დააყენე Chachia.</div>
+ </section>
  <header class="brand"><div class="logo">🎙️</div><h1>Chachia Translator</h1><p>ქართული ↔ Deutsch · ხმოვანი თარჯიმანი</p></header>
  <section class="card">
   <div class="label"><span>შენი ნათქვამი</span><span class="pill" id="sourceLang">ქართული</span></div>
@@ -165,5 +175,43 @@ if ("serviceWorker" in navigator) {
   });
 }
 </script>
+
+<script>
+let deferredInstallPrompt = null;
+const installButton = document.getElementById("installApp");
+const installHelp = document.getElementById("installHelp");
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  installButton.disabled = false;
+  installHelp.textContent = "Chachia მზად არის დასაყენებლად. დააჭირე ღილაკს.";
+});
+
+window.addEventListener("appinstalled", () => {
+  installButton.textContent = "✓ Chachia დაყენებულია";
+  installButton.disabled = true;
+  installHelp.textContent = "აპლიკაცია ტელეფონის მთავარ ეკრანზე გამოჩნდება.";
+});
+
+installButton.disabled = true;
+installHelp.textContent = "ვამოწმებ, შესაძლებელია თუ არა აპის დაყენება…";
+
+installButton.addEventListener("click", async () => {
+  if (!deferredInstallPrompt) {
+    installHelp.textContent = "თუ ღილაკი არ გააქტიურდა, Chrome-ის მენიუში მოძებნე „აპის ინსტალაცია“.";
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  const choice = await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  if (choice && choice.outcome === "accepted") {
+    installHelp.textContent = "დაყენება დაიწყო.";
+  } else {
+    installHelp.textContent = "დაყენება გაუქმდა. სურვილისამებრ ისევ სცადე.";
+  }
+});
+</script>
+
 </body>
 </html>
