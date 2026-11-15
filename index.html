@@ -169,55 +169,57 @@ button:disabled{opacity:.5}
 </main>
 
 <script>
+ 
 const $ = id => document.getElementById(id);
 
-let timer=null;
-let requestNumber=0;
-let recognition=null;
-let listening=false;
-let micSession=0;
+let timer = null;
+let requestNumber = 0;
+let recognition = null;
+let listening = false;
+let micSession = 0;
+let activeLanguage = null;
 
-function isGeorgian(text){
+function isGeorgian(text) {
  return /[\u10A0-\u10FF]/.test(text);
 }
 
-function cleanSpeech(text){
- let words=text
+function cleanSpeech(text) {
+ let words = text
   .replace(/[\u200B-\u200D\uFEFF]/g,'')
   .trim()
   .split(/\s+/)
   .filter(Boolean);
 
- const norm=word=>word
+ const norm = word => word
   .toLocaleLowerCase()
   .normalize('NFC')
   .replace(/[.,!?;:„“"'()[\]{}،؛]/g,'');
 
- let result=[];
+ let result = [];
 
- for(const word of words){
-  const key=norm(word);
-  if(!key)continue;
+ for (const word of words) {
+  const key = norm(word);
+  if (!key) continue;
 
-  if(result.length && norm(result[result.length-1])===key){
+  if (result.length && norm(result[result.length-1]) === key) {
    continue;
   }
 
   result.push(word);
  }
 
- let changed=true;
+ let changed = true;
 
- while(changed){
-  changed=false;
+ while (changed) {
+  changed = false;
 
-  for(let size=Math.min(12,Math.floor(result.length/2));size>=1;size--){
-   const first=result.slice(-size*2,-size).map(norm).join(' ');
-   const second=result.slice(-size).map(norm).join(' ');
+  for (let size = Math.min(12,Math.floor(result.length/2));size>=1;size--) {
+   const first = result.slice(-size*2,-size).map(norm).join(' ');
+   const second = result.slice(-size).map(norm).join(' ');
 
-   if(first && first===second){
+   if (first && first === second) {
     result.splice(-size,size);
-    changed=true;
+    changed = true;
     break;
    }
   }
@@ -226,229 +228,279 @@ function cleanSpeech(text){
  return result.join(' ');
 }
 
-async function translateText(){
- const original=$('source').value.trim();
+async function translateText() {
+ const original = $('source').value.trim();
 
- if(!original){
-  $('translated').textContent='აქ გამოჩნდება თარგმანი...';
+ if (!original) {
+  $('translated').textContent = 'აქ გამოჩნდება თარგმანი...';
   return;
  }
 
- const thisRequest=++requestNumber;
- const target=isGeorgian(original)?'de':'ka';
+ const thisRequest = ++requestNumber;
+ const target = isGeorgian(original) ? 'de' : 'ka';
 
- $('status').textContent='ითარგმნება...';
+ $('status').textContent = 'ითარგმნება...';
 
- try{
-  const url='https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl='
-   +target+'&dt=t&q='+encodeURIComponent(original);
+ try {
+  const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl='
+   + target + '&dt=t&q=' + encodeURIComponent(original);
 
-  const response=await fetch(url);
-  if(!response.ok)throw new Error('Google error');
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Google error');
 
-  const data=await response.json();
-  const result=data[0].map(item=>item[0]).join('');
+  const data = await response.json();
+  const result = data[0].map(item => item[0]).join('');
 
-  if(thisRequest!==requestNumber)return;
+  if (thisRequest !== requestNumber) return;
 
-  $('translated').textContent=result||'თარგმანი ვერ მოიძებნა';
-  $('status').textContent='თარგმნა დასრულდა';
+  $('translated').textContent = result || 'თარგმანი ვერ მოიძებნა';
+  $('status').textContent = 'თარგმნა დასრულდა';
 
- }catch(error){
-  try{
-   const url='https://api.mymemory.translated.net/get?q='
-    +encodeURIComponent(original)+'&langpair='
-    +(target==='de'?'ka|de':'de|ka');
+ } catch (error) {
+  try {
+   const url = 'https://api.mymemory.translated.net/get?q='
+    + encodeURIComponent(original) + '&langpair='
+    + (target === 'de' ? 'ka|de' : 'de|ka');
 
-   const response=await fetch(url);
-   const data=await response.json();
+   const response = await fetch(url);
+   const data = await response.json();
 
-   if(thisRequest!==requestNumber)return;
+   if (thisRequest !== requestNumber) return;
 
-   if(data.responseData&&data.responseData.translatedText){
-    $('translated').textContent=data.responseData.translatedText;
-    $('status').textContent='თარგმნა დასრულდა';
-   }else{
-    $('status').textContent='თარგმნა ვერ მოხერხდა';
+   if (data.responseData && data.responseData.translatedText) {
+    $('translated').textContent = data.responseData.translatedText;
+    $('status').textContent = 'თარგმნა დასრულდა';
+   } else {
+    $('status').textContent = 'თარგმნა ვერ მოხერხდა';
    }
-  }catch(e){
-   if(thisRequest===requestNumber){
-    $('status').textContent='ინტერნეტთან კავშირი შეამოწმე';
+  } catch (e) {
+   if (thisRequest === requestNumber) {
+    $('status').textContent = 'ინტერნეტთან კავშირი შეამოწმე';
    }
   }
  }
 }
 
-function scheduleTranslation(){
+function scheduleTranslation() {
  clearTimeout(timer);
- timer=setTimeout(translateText,600);
+ timer = setTimeout(translateText,600);
 }
 
 $('source').addEventListener('input',scheduleTranslation);
 
-function micButtons(disabled){
- $('kaMic').disabled=disabled;
- $('deMic').disabled=disabled;
+// მიკროფონის ღილაკების ვიზუალური მდგომარეობა
+function updateMicButtons() {
+ const ka = activeLanguage === 'ka-GE';
+ const de = activeLanguage === 'de-DE';
+
+ $('kaMic').classList.toggle('active',ka);
+ $('deMic').classList.toggle('active',de);
+
+ $('kaMic').textContent = ka ? '🔴 გამორთვა' : '🎤 ქართული';
+ $('deMic').textContent = de ? '🔴 გამორთვა' : '🎤 Deutsch';
+
+ // ორივე ღილაკი ყოველთვის ხელმისაწვდომია
+ $('kaMic').disabled = false;
+ $('deMic').disabled = false;
 }
 
-function stopMic(){
+// მიკროფონის უსაფრთხო გამორთვა
+function stopMic(message = 'მიკროფონი გამორთულია') {
  micSession++;
 
- if(recognition){
-  const old=recognition;
-  recognition=null;
-  listening=false;
-  try{old.abort();}catch(e){}
+ const old = recognition;
+
+ recognition = null;
+ listening = false;
+ activeLanguage = null;
+
+ updateMicButtons();
+
+ if (old) {
+  try {
+   old.abort();
+  } catch (e) {}
  }
 
- micButtons(false);
+ if (message) {
+  $('status').textContent = message;
+ }
 }
 
-function startMic(language){
- const SpeechRecognition=window.SpeechRecognition||
+// მიკროფონის ჩართვა
+function startMic(language) {
+ const SpeechRecognition =
+  window.SpeechRecognition ||
   window.webkitSpeechRecognition;
 
- if(!SpeechRecognition){
-  $('status').textContent='ამ ბრაუზერში მიკროფონი მიუწვდომელია';
+ if (!SpeechRecognition) {
+  $('status').textContent = 'ამ ბრაუზერში მიკროფონი მიუწვდომელია';
   return;
  }
 
- if(recognition){
-  stopMic();
+ // თუ იგივე მიკროფონია ჩართული, მეორედ დაჭერა გამორთავს
+ if (recognition && activeLanguage === language) {
+  stopMic('მიკროფონი ხელით გამოირთო');
+  return;
  }
 
- const mySession=++micSession;
- const current=new SpeechRecognition();
+ // თუ სხვა ენის მიკროფონია ჩართული, გავთიშოთ
+ if (recognition) {
+  stopMic(null);
+ }
 
- recognition=current;
- listening=true;
- micButtons(true);
+ const mySession = ++micSession;
+ const current = new SpeechRecognition();
 
- let handled=false;
+ recognition = current;
+ listening = true;
+ activeLanguage = language;
 
- current.lang=language;
- current.continuous=false;
- current.interimResults=false;
- current.maxAlternatives=1;
+ updateMicButtons();
 
- $('status').textContent='🎤 გისმენ...';
+ let handled = false;
 
- current.onresult=function(event){
-  if(mySession!==micSession)return;
-  if(handled)return;
+ current.lang = language;
+ current.continuous = false;
+ current.interimResults = false;
+ current.maxAlternatives = 1;
 
-  let parts=[];
+ $('status').textContent = '🎤 გისმენ...';
 
-  for(let i=event.resultIndex;i<event.results.length;i++){
-   const item=event.results[i];
+ current.onresult = function(event) {
+  if (mySession !== micSession || handled) return;
 
-   if(item.isFinal){
+  let parts = [];
+
+  for (let i = event.resultIndex; i < event.results.length; i++) {
+   const item = event.results[i];
+
+   if (item.isFinal) {
     parts.push(item[0].transcript);
    }
   }
 
-  const transcript=cleanSpeech(parts.join(' '));
+  const transcript = cleanSpeech(parts.join(' '));
 
-  if(!transcript)return;
+  if (!transcript) return;
 
-  handled=true;
+  handled = true;
 
-  $('source').value=transcript;
+  $('source').value = transcript;
   clearTimeout(timer);
   translateText();
 
-  $('status').textContent='ამოცნობა დასრულდა';
+  $('status').textContent = 'ამოცნობა დასრულდა';
 
-  try{current.stop();}catch(e){}
+  try {
+   current.stop();
+  } catch (e) {}
  };
 
- current.onerror=function(event){
-  if(mySession!==micSession)return;
+ current.onerror = function(event) {
+  if (mySession !== micSession) return;
 
-  listening=false;
-  recognition=null;
-  micButtons(false);
+  recognition = null;
+  listening = false;
+  activeLanguage = null;
 
-  if(event.error==='not-allowed'){
-   $('status').textContent='მიკროფონის ნებართვა ჩართე';
-  }else if(event.error==='no-speech'){
-   $('status').textContent='ხმა ვერ გავიგე. კიდევ სცადე';
-  }else{
-   $('status').textContent='მიკროფონის შეცდომა: '+event.error;
+  updateMicButtons();
+
+  if (event.error === 'not-allowed') {
+   $('status').textContent = 'მიკროფონის ნებართვა ჩართე';
+  } else if (event.error === 'no-speech') {
+   $('status').textContent = 'ხმა ვერ გავიგე. კიდევ სცადე';
+  } else if (event.error === 'aborted') {
+   $('status').textContent = 'მიკროფონი გამორთულია';
+  } else {
+   $('status').textContent = 'მიკროფონის შეცდომა: ' + event.error;
   }
  };
 
- current.onend=function(){
-  if(mySession!==micSession)return;
+ current.onend = function() {
+  if (mySession !== micSession) return;
 
-  listening=false;
-  recognition=null;
-  micButtons(false);
+  recognition = null;
+  listening = false;
+  activeLanguage = null;
 
-  if(!handled){
-   $('status').textContent='მზად არის';
+  updateMicButtons();
+
+  if (!handled) {
+   $('status').textContent = 'მზად არის';
   }
  };
 
- try{
+ try {
   current.start();
- }catch(error){
-  if(mySession===micSession){
-   listening=false;
-   recognition=null;
-   micButtons(false);
-   $('status').textContent='მიკროფონი ვერ ჩაირთო';
+ } catch (error) {
+  if (mySession === micSession) {
+   recognition = null;
+   listening = false;
+   activeLanguage = null;
+
+   updateMicButtons();
+   $('status').textContent = 'მიკროფონი ვერ ჩაირთო';
   }
  }
 }
 
-$('kaMic').addEventListener('click',()=>startMic('ka-GE'));
-$('deMic').addEventListener('click',()=>startMic('de-DE'));
+// ორივე ღილაკზე ხელით მართვა
+$('kaMic').addEventListener('click',() => {
+ startMic('ka-GE');
+});
 
-$('speakBtn').addEventListener('click',()=>{
- const text=$('translated').textContent;
+$('deMic').addEventListener('click',() => {
+ startMic('de-DE');
+});
 
- if(!text||text==='აქ გამოჩნდება თარგმანი...')return;
+$('speakBtn').addEventListener('click',() => {
+ const text = $('translated').textContent;
+
+ if (!text || text === 'აქ გამოჩნდება თარგმანი...') return;
 
  speechSynthesis.cancel();
 
- const utterance=new SpeechSynthesisUtterance(text);
- utterance.lang=isGeorgian(text)?'ka-GE':'de-DE';
- utterance.rate=0.9;
+ const utterance = new SpeechSynthesisUtterance(text);
+ utterance.lang = isGeorgian(text) ? 'ka-GE' : 'de-DE';
+ utterance.rate = 0.9;
 
  speechSynthesis.speak(utterance);
 });
 
-$('copyBtn').addEventListener('click',async()=>{
- const text=$('translated').textContent;
+$('copyBtn').addEventListener('click',async() => {
+ const text = $('translated').textContent;
 
- if(!text||text==='აქ გამოჩნდება თარგმანი...')return;
+ if (!text || text === 'აქ გამოჩნდება თარგმანი...') return;
 
- try{
+ try {
   await navigator.clipboard.writeText(text);
-  $('status').textContent='ტექსტი დაკოპირდა';
- }catch(e){
-  $('status').textContent='კოპირება ვერ მოხერხდა';
+  $('status').textContent = 'ტექსტი დაკოპირდა';
+ } catch (e) {
+  $('status').textContent = 'კოპირება ვერ მოხერხდა';
  }
 });
 
-$('clearBtn').addEventListener('click',()=>{
- stopMic();
+$('clearBtn').addEventListener('click',() => {
+ stopMic(null);
 
- $('source').value='';
- $('translated').textContent='აქ გამოჩნდება თარგმანი...';
- $('status').textContent='გასუფთავებულია';
+ $('source').value = '';
+ $('translated').textContent = 'აქ გამოჩნდება თარგმანი...';
+ $('status').textContent = 'გასუფთავებულია';
 
  speechSynthesis.cancel();
  clearTimeout(timer);
  requestNumber++;
 });
 
-if('serviceWorker' in navigator){
- window.addEventListener('load',()=>{
-  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+if ('serviceWorker' in navigator) {
+ window.addEventListener('load',() => {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
  });
 }
+
+  
+ 
 </script>
 </body>
 </html>
