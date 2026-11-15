@@ -1,131 +1,217 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ka">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#101827">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101b35">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Chachia">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="icon" type="image/png" href="./icon-192.png">
+<link rel="manifest" href="./manifest.json">
 <title>Chachia Translator</title>
 <style>
-* { box-sizing:border-box; }
-html, body {
-  margin:0;
-  width:100%;
-  min-height:100%;
-  background:#101827;
-  color:white;
-  font-family:Arial,sans-serif;
-}
-body { min-height:100vh; min-height:100dvh; }
-.app {
-  width:100%;
-  min-height:100vh;
-  min-height:100dvh;
-  padding:20px 14px;
-  padding-top:max(20px, env(safe-area-inset-top));
-  padding-bottom:max(20px, env(safe-area-inset-bottom));
-  display:flex;
-  flex-direction:column;
-  gap:16px;
-}
-h1 { text-align:center; font-size:26px; margin:10px 0 0; }
-.subtitle { text-align:center; color:#b8c7dc; margin:0; }
-textarea {
-  display:block;
-  width:100%;
-  min-height:180px;
-  padding:16px;
-  border:2px solid #40516c;
-  border-radius:14px;
-  background:#202d40;
-  color:white;
-  font-size:19px;
-  resize:vertical;
-}
-button {
-  display:block;
-  width:100%;
-  min-height:54px;
-  border:0;
-  border-radius:14px;
-  background:#2786f5;
-  color:white;
-  font-size:18px;
-  font-weight:bold;
-}
-.output {
-  width:100%;
-  min-height:160px;
-  padding:17px;
-  border-radius:14px;
-  background:#202d40;
-  border:1px solid #40516c;
-  font-size:20px;
-  overflow-wrap:anywhere;
-  white-space:pre-wrap;
-}
-.status { text-align:center; color:#b8c7dc; font-size:14px; }
+:root{color-scheme:dark;--bg:#0b1224;--panel:#15213b;--line:#2a3a5e;--accent:#6ee7c2;--muted:#a9b7d0}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(160deg,#101b35,#080e1d);font-family:system-ui,-apple-system,"Noto Sans Georgian",sans-serif;color:#f7f9ff;min-height:100vh}
+main{max-width:560px;margin:auto;padding:22px 16px 34px}.brand{text-align:center;padding:12px 0 22px}.logo{width:62px;height:62px;margin:auto;border-radius:20px;background:#20365b;display:grid;place-items:center;font-size:30px;border:1px solid #3a527b}.brand h1{font-size:25px;margin:12px 0 4px}.brand p{color:var(--muted);margin:0;font-size:14px}
+.card{background:rgba(21,33,59,.94);border:1px solid var(--line);border-radius:20px;padding:17px;margin:14px 0;box-shadow:0 12px 32px #0003}
+.label{display:flex;justify-content:space-between;align-items:center;color:#dce7ff;font-weight:700;margin-bottom:10px}.pill{font-size:12px;color:var(--accent);border:1px solid #356d68;border-radius:99px;padding:4px 9px}
+textarea{width:100%;min-height:92px;resize:vertical;border-radius:13px;border:1px solid #344666;background:#0d1730;color:#fff;padding:13px;font:16px/1.5 inherit;outline:none}textarea::placeholder{color:#8191ad}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.btn{border:0;border-radius:14px;padding:14px 10px;font-weight:750;font-size:14px;background:#263d65;color:white;min-height:52px}.btn.primary{background:var(--accent);color:#09231f}.btn:disabled{opacity:.45}
+.result{white-space:pre-wrap;min-height:60px;line-height:1.55;font-size:17px;color:#fff}.sub{font-size:12px;color:var(--muted);margin-top:9px}.row{display:flex;gap:9px;flex-wrap:wrap}.small{flex:1;min-width:120px;padding:11px;border-radius:12px;background:#223454;border:1px solid #354b70;color:#fff;font-weight:650}
+.status{text-align:center;color:var(--muted);font-size:13px;min-height:22px;margin:8px 0}.notice{font-size:12px;line-height:1.5;color:#a9b7d0;text-align:center;padding:4px 12px}
+footer{text-align:center;color:#71819d;font-size:11px;padding:14px}
 </style>
 </head>
 <body>
-<main class="app">
-  <h1>🌍 Chachia Translator</h1>
-  <p class="subtitle">ქართული ⇄ გერმანული</p>
+<main>
 
-  <textarea id="source" placeholder="დაწერე ტექსტი აქ..."></textarea>
-
-  <button id="translate">თარგმნა</button>
-
-  <div class="output" id="result">თარგმანი გამოჩნდება აქ</div>
-
-  <button id="copy">კოპირება</button>
-  <div class="status" id="status">მზად არის</div>
+ <section class="card" id="installCard" style="text-align:center">
+  <button class="btn primary" id="installApp" type="button" style="width:100%">📲 აპლიკაციის დაყენება</button>
+  <div class="sub" id="installHelp">თუ ღილაკი გააქტიურდა, დააჭირე და დააყენე Chachia.</div>
+ </section>
+ <header class="brand"><div class="logo">🎙️</div><h1>Chachia Translator</h1><p>ქართული ↔ Deutsch · ხმოვანი თარჯიმანი</p></header>
+ <section class="card">
+  <div class="label"><span>შენი ნათქვამი</span><span class="pill" id="sourceLang">ქართული</span></div>
+  <textarea id="source" placeholder="აქ გამოჩნდება ამოცნობილი სიტყვები…"></textarea>
+  <div class="actions">
+   <button class="btn primary" id="kaMic">🎤 ვლაპარაკობ ქართულად</button>
+   <button class="btn" id="deMic">🎤 Ich spreche Deutsch</button>
+  </div>
+  <div class="sub">აირჩიე შესაბამისი ღილაკი და ილაპარაკე. მიკროფონის გამოყენებას ბრაუზერის ნებართვა სჭირდება.</div>
+ </section>
+ <div class="status" id="status" aria-live="polite">მზად არის</div>
+ <section class="card">
+  <div class="label"><span>თარგმანი</span><span class="pill" id="targetLang">Deutsch</span></div>
+  <div class="result" id="translated">თარგმანი აქ გამოჩნდება…</div>
+  <div class="row" style="margin-top:12px">
+   <button class="small" id="speak">🔊 წაკითხვა</button>
+   <button class="small" id="copy">კოპირება</button>
+  </div>
+ </section>
+ <p class="notice">აკრიფე ქართულად ან გერმანულად — თარგმანი ავტომატურად გამოჩნდება. თარგმნისთვის საჭიროა ინტერნეტი.</p>
+ <footer>Chachia Translator · პირველი ვერსია</footer>
 </main>
+<script>
+const $=id=>document.getElementById(id);
+let from='ka', recognition=null, listeningLang=null, translationTimer=null, translationRequest=0;
+const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+function setStatus(t){$('status').textContent=t}
+function setDirection(lang){
+ from=lang;
+ $('sourceLang').textContent=lang==='ka'?'ქართული':'Deutsch';
+ $('targetLang').textContent=lang==='ka'?'Deutsch':'ქართული';
+}
+async function translate(){
+ const text=$('source').value.trim();
+ if(!text){$('translated').textContent='თარგმანი აქ გამოჩნდება…';setStatus('დაიწყე ტექსტის აკრეფა ან ილაპარაკე.');return}
+ const request=++translationRequest;
+ $('translated').textContent='ვთარგმნი…';
+ const sl=from==='ka'?'ka':'de', tl=from==='ka'?'de':'ka';
+ // პირველ რიგში ვცდით Google-ის თარგმნის endpoint-ს, შემდეგ MyMemory-ს.
+ try{
+  let result='';
+  try{
+   const googleUrl='https://translate.googleapis.com/translate_a/single?client=gtx&sl='+sl+'&tl='+tl+'&dt=t&q='+encodeURIComponent(text);
+   const gr=await fetch(googleUrl);
+   if(gr.ok){
+    const gd=await gr.json();
+    result=(gd?.[0]||[]).map(part=>part?.[0]||'').join('').trim();
+   }
+  }catch(e){}
+  if(!result){
+   const url='https://api.mymemory.translated.net/get?q='+encodeURIComponent(text)+'&langpair='+sl+'|'+tl;
+   const res=await fetch(url); if(!res.ok) throw new Error('network');
+   const data=await res.json();
+   result=data?.responseData?.translatedText||'';
+  }
+  if(!result) throw new Error('empty');
+  if(request!==translationRequest)return;
+  $('translated').textContent=result;
+  setStatus('თარგმანი მზად არის');
+ }catch(e){
+  if(request!==translationRequest)return;
+  $('translated').textContent='თარგმნა ვერ მოხერხდა. შეამოწმე ინტერნეტი და სცადე თავიდან.';
+  setStatus('კავშირის ან თარგმნის სერვისის შეცდომა');
+ }
+}
+function scheduleTranslation(){
+ const value=$('source').value;
+ if(/[\u10A0-\u10FF]/.test(value)) setDirection('ka');
+ else if(/[A-Za-zÄÖÜäöüß]/.test(value)) setDirection('de');
+ clearTimeout(translationTimer);
+ translationTimer=setTimeout(()=>translate(),600);
+}
+function listen(lang){
+ if(recognition && listeningLang===lang){
+  setStatus('ვაჩერებ მოსმენას…');
+  recognition.stop();
+  return;
+ }
+ if(recognition){
+  const old=recognition;
+  recognition=null;
+  listeningLang=null;
+  old.onend=null;
+  try{old.stop()}catch(e){}
+ }
+ setDirection(lang);
+ if(!SpeechRecognition){setStatus('ამ ბრაუზერში ხმოვანი ამოცნობა არ არის მხარდაჭერილი. სცადე Chrome.');return}
+ try{
+  const current=new SpeechRecognition();
+  recognition=current;
+  listeningLang=lang;
+  current.lang=lang==='ka'?'ka-GE':'de-DE';
+  current.continuous=true;
+  current.interimResults=true;
+  current.maxAlternatives=1;
+  $('source').value='';
+  $('translated').textContent='თარგმანი აქ გამოჩნდება…';
+  current.onstart=()=>setStatus('გისმენ… მეორედ დააჭირე გასაჩერებლად');
+  current.onresult=e=>{
+   let finalText='', interim='';
+   for(let i=0;i<e.results.length;i++){
+    const t=e.results[i][0].transcript;
+    if(e.results[i].isFinal) finalText+=t+' ';
+    else interim+=t;
+   }
+   $('source').value=(finalText+interim).trim();
+  };
+  current.onerror=e=>setStatus('მიკროფონის შეცდომა: '+e.error+'. შეამოწმე ნებართვა.');
+  current.onend=()=>{
+   if(recognition===current){
+    recognition=null;
+    listeningLang=null;
+    if($('source').value.trim()) translate();
+    else setStatus('მოსმენა დასრულდა');
+   }
+  };
+  current.start();
+ }catch(e){
+  recognition=null;
+  listeningLang=null;
+  setStatus('მიკროფონის ჩართვა ვერ მოხერხდა');
+ }
+}
+$('kaMic').onclick=()=>listen('ka');
+$('deMic').onclick=()=>listen('de');
+$('source').addEventListener('input',scheduleTranslation);
+$('speak').onclick=()=>{
+ const t=$('translated').textContent.trim();
+ if(!t||t.includes('აქ გამოჩნდება')||t.includes('ვერ მოხერხდა'))return;
+ if(!('speechSynthesis'in window)){setStatus('ხმოვანი წაკითხვა ამ ბრაუზერში მიუწვდომელია');return}
+ const u=new SpeechSynthesisUtterance(t);u.lang=from==='ka'?'de-DE':'ka-GE';speechSynthesis.cancel();speechSynthesis.speak(u);
+};
+$('copy').onclick=async()=>{
+ try{await navigator.clipboard.writeText($('translated').textContent);setStatus('კოპირებულია')}
+ catch(e){setStatus('კოპირება ვერ მოხერხდა')}
+};
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(()=>{});
+  });
+}
+</script>
 
 <script>
-const source = document.getElementById("source");
-const result = document.getElementById("result");
-const status = document.getElementById("status");
+let deferredInstallPrompt = null;
+const installButton = document.getElementById("installApp");
+const installHelp = document.getElementById("installHelp");
 
-document.getElementById("translate").addEventListener("click", async () => {
-  const input = source.value.trim();
-
-  if (!input) {
-    status.textContent = "ჯერ ჩაწერე ტექსტი";
-    return;
-  }
-
-  const isGeorgian = /[\u10A0-\u10FF]/.test(input);
-  const from = isGeorgian ? "ka" : "de";
-  const to = isGeorgian ? "de" : "ka";
-
-  result.textContent = "ითარგმნება...";
-  status.textContent = "გთხოვ დაელოდე";
-
-  try {
-    const url =
-      "https://translate.googleapis.com/translate_a/single?client=gtx&sl=" +
-      from + "&tl=" + to + "&dt=t&q=" + encodeURIComponent(input);
-
-    const response = await fetch(url);
-    if (!response.ok) throw new Error("Network error");
-
-    const data = await response.json();
-    result.textContent = data[0].map(part => part[0] || "").join("");
-    status.textContent = "თარგმნა დასრულდა ✓";
-  } catch (error) {
-    result.textContent = "თარგმნა ვერ მოხერხდა. შეამოწმე ინტერნეტი.";
-    status.textContent = "შეცდომა";
-  }
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  installButton.disabled = false;
+  installHelp.textContent = "Chachia მზად არის დასაყენებლად. დააჭირე ღილაკს.";
 });
 
-document.getElementById("copy").addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText(result.textContent);
-    status.textContent = "კოპირებულია ✓";
-  } catch (error) {
-    status.textContent = "კოპირება ვერ მოხერხდა";
+window.addEventListener("appinstalled", () => {
+  installButton.textContent = "✓ Chachia დაყენებულია";
+  installButton.disabled = true;
+  installHelp.textContent = "აპლიკაცია ტელეფონის მთავარ ეკრანზე გამოჩნდება.";
+});
+
+installButton.disabled = true;
+installHelp.textContent = "ვამოწმებ, შესაძლებელია თუ არა აპის დაყენება…";
+
+installButton.addEventListener("click", async () => {
+  if (!deferredInstallPrompt) {
+    installHelp.textContent = "თუ ღილაკი არ გააქტიურდა, Chrome-ის მენიუში მოძებნე „აპის ინსტალაცია“.";
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  const choice = await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  if (choice && choice.outcome === "accepted") {
+    installHelp.textContent = "დაყენება დაიწყო.";
+  } else {
+    installHelp.textContent = "დაყენება გაუქმდა. სურვილისამებრ ისევ სცადე.";
   }
 });
 </script>
+
 </body>
 </html>
