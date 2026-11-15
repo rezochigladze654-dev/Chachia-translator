@@ -33,13 +33,17 @@ button{
  border:0;border-radius:12px;padding:13px 15px;
  font-size:15px;font-weight:bold;cursor:pointer
 }
+button:disabled{opacity:.5}
 .actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
 .actions button{flex:1}
 .mic{background:#315c9d;color:white}
 .mainbtn{background:#3979db;color:white}
 .secondary{background:#344563;color:white}
-#translated{min-height:100px;white-space:pre-wrap;overflow-wrap:anywhere;
- font-size:19px;line-height:1.5;color:#fff}
+#translated{
+ min-height:100px;white-space:pre-wrap;
+ overflow-wrap:anywhere;font-size:19px;
+ line-height:1.5;color:#fff
+}
 .status{text-align:center;color:#b8c9e8;font-size:14px;min-height:22px}
 .footer{text-align:center;color:#8294b6;font-size:12px;margin:25px 0}
 </style>
@@ -80,53 +84,70 @@ let timer = null;
 let requestNumber = 0;
 let recognition = null;
 let listening = false;
+let micSession = 0;
 
 function isGeorgian(text){
  return /[\u10A0-\u10FF]/.test(text);
 }
 
+// ხმოვანი ტექსტის გაწმენდა
 function cleanSpeech(text){
- let words = text.trim().split(/\s+/).filter(Boolean);
+ let words = text
+  .replace(/[\u200B-\u200D\uFEFF]/g,'')
+  .trim()
+  .split(/\s+/)
+  .filter(Boolean);
 
- const norm = word => word.toLocaleLowerCase()
-  .replace(/[.,!?;:„“"'()[\]]/g,'');
+ const norm = word => word
+  .toLocaleLowerCase()
+  .normalize('NFC')
+  .replace(/[.,!?;:„“"'()[\]{}،؛]/g,'');
 
- // შლის ერთმანეთის მიყოლებით გამეორებულ სიტყვებს
  let result = [];
+
  for(const word of words){
-  if(result.length && norm(result[result.length-1]) === norm(word)){
+  const key = norm(word);
+  if(!key) continue;
+
+  // ზედიზედ გამეორებული სიტყვის მოცილება
+  if(result.length && norm(result[result.length-1]) === key){
    continue;
   }
+
   result.push(word);
  }
 
- // შლის განმეორებულ ფრაზებსაც, მაგალითად:
- // "Guten Morgen Guten Morgen"
+ // გამეორებული ფრაზების მოცილება
  let changed = true;
  while(changed){
   changed = false;
-  for(let size = Math.min(8,Math.floor(result.length/2));size>=1;size--){
-   const a = result.slice(-size*2,-size).map(norm).join(' ');
-   const b = result.slice(-size).map(norm).join(' ');
-   if(a && a===b){
+
+  for(let size=Math.min(12,Math.floor(result.length/2));size>=1;size--){
+   const first=result.slice(-size*2,-size).map(norm).join(' ');
+   const second=result.slice(-size).map(norm).join(' ');
+
+   if(first && first===second){
     result.splice(-size,size);
-    changed = true;
+    changed=true;
     break;
    }
   }
  }
+
  return result.join(' ');
 }
 
 async function translateText(){
- const original = $('source').value.trim();
+ const original=$('source').value.trim();
+
  if(!original){
   $('translated').textContent='აქ გამოჩნდება თარგმანი...';
   return;
  }
 
- const thisRequest = ++requestNumber;
- const target = isGeorgian(original) ? 'de' : 'ka';
+ const thisRequest=++requestNumber;
+ const target=isGeorgian(original)?'de':'ka';
+
  $('status').textContent='ითარგმნება...';
 
  try{
@@ -139,9 +160,11 @@ async function translateText(){
   const data=await response.json();
   const result=data[0].map(item=>item[0]).join('');
 
-  if(thisRequest!==requestNumber) return;
-  $('translated').textContent=result || 'თარგმანი ვერ მოიძებნა';
+  if(thisRequest!==requestNumber)return;
+
+  $('translated').textContent=result||'თარგმანი ვერ მოიძებნა';
   $('status').textContent='თარგმნა დასრულდა';
+
  }catch(error){
   try{
    const url='https://api.mymemory.translated.net/get?q='
@@ -151,8 +174,9 @@ async function translateText(){
    const response=await fetch(url);
    const data=await response.json();
 
-   if(thisRequest!==requestNumber) return;
-   if(data.responseData && data.responseData.translatedText){
+   if(thisRequest!==requestNumber)return;
+
+   if(data.responseData&&data.responseData.translatedText){
     $('translated').textContent=data.responseData.translatedText;
     $('status').textContent='თარგმნა დასრულდა';
    }else{
@@ -173,8 +197,27 @@ function scheduleTranslation(){
 
 $('source').addEventListener('input',scheduleTranslation);
 
+// მიკროფონის ღილაკების მდგომარეობა
+function micButtons(disabled){
+ $('kaMic').disabled=disabled;
+ $('deMic').disabled=disabled;
+}
+
+function stopMic(){
+ micSession++;
+
+ if(recognition){
+  const old=recognition;
+  recognition=null;
+  listening=false;
+  try{old.abort();}catch(e){}
+ }
+
+ micButtons(false);
+}
+
 function startMic(language){
- const SpeechRecognition=window.SpeechRecognition ||
+ const SpeechRecognition=window.SpeechRecognition||
   window.webkitSpeechRecognition;
 
  if(!SpeechRecognition){
@@ -182,13 +225,17 @@ function startMic(language){
   return;
  }
 
- if(listening && recognition){
-  recognition.stop();
+ // ძველი სესიის გაუქმება
+ if(recognition){
+  stopMic();
  }
 
+ const mySession=++micSession;
  const current=new SpeechRecognition();
+
  recognition=current;
  listening=true;
+ micButtons(true);
 
  let handled=false;
 
@@ -200,49 +247,72 @@ function startMic(language){
  $('status').textContent='🎤 გისმენ...';
 
  current.onresult=function(event){
-  if(handled) return;
+  if(mySession!==micSession)return;
+  if(handled)return;
 
-  let transcript='';
+  let parts=[];
 
-  for(let i=0;i<event.results.length;i++){
-   if(event.results[i].isFinal){
-    transcript=event.results[i][0].transcript;
-    break;
+  // ვიღებთ მხოლოდ ახალ, საბოლოო შედეგებს
+  for(let i=event.resultIndex;i<event.results.length;i++){
+   const item=event.results[i];
+
+   if(item.isFinal){
+    parts.push(item[0].transcript);
    }
   }
 
-  transcript=cleanSpeech(transcript);
+  let transcript=cleanSpeech(parts.join(' '));
 
-  if(transcript){
-   handled=true;
-   $('source').value=transcript;
-   translateText();
-   $('status').textContent='ამოცნობა დასრულდა';
-   current.stop();
-  }
+  if(!transcript)return;
+
+  handled=true;
+
+  $('source').value=transcript;
+  clearTimeout(timer);
+  translateText();
+
+  $('status').textContent='ამოცნობა დასრულდა';
+
+  try{current.stop();}catch(e){}
  };
 
  current.onerror=function(event){
+  if(mySession!==micSession)return;
+
   listening=false;
+  recognition=null;
+  micButtons(false);
+
   if(event.error==='not-allowed'){
    $('status').textContent='მიკროფონის ნებართვა ჩართე';
+  }else if(event.error==='no-speech'){
+   $('status').textContent='ხმა ვერ გავიგე. კიდევ სცადე';
   }else{
    $('status').textContent='მიკროფონის შეცდომა: '+event.error;
   }
  };
 
  current.onend=function(){
-  if(recognition===current){
-   listening=false;
-   recognition=null;
+  if(mySession!==micSession)return;
+
+  listening=false;
+  recognition=null;
+  micButtons(false);
+
+  if(!handled){
+   $('status').textContent='მზად არის';
   }
  };
 
  try{
   current.start();
  }catch(error){
-  listening=false;
-  $('status').textContent='მიკროფონი ვერ ჩაირთო';
+  if(mySession===micSession){
+   listening=false;
+   recognition=null;
+   micButtons(false);
+   $('status').textContent='მიკროფონი ვერ ჩაირთო';
+  }
  }
 }
 
@@ -251,18 +321,22 @@ $('deMic').addEventListener('click',()=>startMic('de-DE'));
 
 $('speakBtn').addEventListener('click',()=>{
  const text=$('translated').textContent;
- if(!text || text==='აქ გამოჩნდება თარგმანი...') return;
+
+ if(!text||text==='აქ გამოჩნდება თარგმანი...')return;
 
  speechSynthesis.cancel();
+
  const utterance=new SpeechSynthesisUtterance(text);
  utterance.lang=isGeorgian(text)?'ka-GE':'de-DE';
  utterance.rate=0.9;
+
  speechSynthesis.speak(utterance);
 });
 
 $('copyBtn').addEventListener('click',async()=>{
  const text=$('translated').textContent;
- if(!text || text==='აქ გამოჩნდება თარგმანი...') return;
+
+ if(!text||text==='აქ გამოჩნდება თარგმანი...')return;
 
  try{
   await navigator.clipboard.writeText(text);
@@ -273,15 +347,17 @@ $('copyBtn').addEventListener('click',async()=>{
 });
 
 $('clearBtn').addEventListener('click',()=>{
+ stopMic();
+
  $('source').value='';
  $('translated').textContent='აქ გამოჩნდება თარგმანი...';
  $('status').textContent='გასუფთავებულია';
+
  speechSynthesis.cancel();
  clearTimeout(timer);
  requestNumber++;
 });
 
-// აპის განახლების მხარდაჭერა
 if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{
   navigator.serviceWorker.register('./sw.js').catch(()=>{});
