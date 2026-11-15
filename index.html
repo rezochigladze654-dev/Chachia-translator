@@ -1,3 +1,122 @@
+
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#101827">
+<title>Chachia Translator</title>
+<style>
+* { box-sizing:border-box; }
+html,body {
+  margin:0;
+  padding:0;
+  width:100%;
+  min-height:100%;
+  background:#101827;
+  color:white;
+  font-family:Arial,sans-serif;
+}
+body { min-height:100dvh; }
+.app {
+  width:100%;
+  min-height:100dvh;
+  padding:24px 16px;
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+h1 { text-align:center; font-size:27px; }
+p { text-align:center; color:#aab7ca; }
+textarea {
+  width:100%;
+  min-height:180px;
+  border:2px solid #34445e;
+  border-radius:15px;
+  padding:16px;
+  font-size:19px;
+  background:#202d40;
+  color:white;
+  resize:vertical;
+}
+button {
+  width:100%;
+  padding:17px;
+  border:0;
+  border-radius:14px;
+  background:#2786f5;
+  color:white;
+  font-size:19px;
+  font-weight:bold;
+}
+.output {
+  width:100%;
+  min-height:150px;
+  padding:18px;
+  border-radius:15px;
+  background:#202d40;
+  font-size:20px;
+  overflow-wrap:anywhere;
+}
+.small { font-size:13px; color:#9caec5; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>🌍 Chachia Translator</h1>
+  <p>ქართული ⇄ გერმანული</p>
+
+  <textarea id="source" placeholder="დაწერე ქართული ან გერმანული ტექსტი..."></textarea>
+
+  <button onclick="translateText()">თარგმნა</button>
+
+  <div class="output" id="result">თარგმანი გამოჩნდება აქ</div>
+
+  <button onclick="copyText()">კოპირება</button>
+  <div class="small" id="status">ავტომატური ენის ამოცნობა</div>
+</div>
+
+<script>
+async function translateText() {
+ const input=document.getElementById("source").value.trim();
+ const result=document.getElementById("result");
+ const status=document.getElementById("status");
+
+ if(!input) {
+   status.textContent="ჯერ ჩაწერე ტექსტი";
+   return;
+ }
+
+ result.textContent="ითარგმნება...";
+ status.textContent="გთხოვ, დაელოდე";
+
+ const hasGeorgian=/[\u10A0-\u10FF]/.test(input);
+ const from=hasGeorgian?"ka":"de";
+ const to=hasGeorgian?"de":"ka";
+
+ try {
+  const url="https://translate.googleapis.com/translate_a/single?client=gtx&sl="+from+"&tl="+to+"&dt=t&q="+encodeURIComponent(input);
+  const response=await fetch(url);
+  if(!response.ok) throw new Error("Network error");
+  const data=await response.json();
+  result.textContent=data[0].map(x=>x[0]).join("");
+  status.textContent="თარგმნა დასრულებულია ✓";
+ } catch(e) {
+  result.textContent="თარგმნა ვერ მოხერხდა. შეამოწმე ინტერნეტი და სცადე თავიდან.";
+  status.textContent="შეცდომა";
+ }
+}
+
+function copyText() {
+ const text=document.getElementById("result").textContent;
+ if(navigator.clipboard) {
+  navigator.clipboard.writeText(text);
+  document.getElementById("status").textContent="კოპირებულია ✓";
+ }
+}
+</script>
+</body>
+</html>
 <!doctype html>
 <html lang="ka">
 <head>
