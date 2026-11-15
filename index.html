@@ -64,14 +64,12 @@ button{
 
 <body>
 <main>
-
 <h1>Chachia Translator</h1>
 <div class="sub">ქართული ⇄ გერმანული</div>
 
 <div class="panel">
 <label>ჩაწერე ტექსტი</label>
 <textarea id="source" placeholder="დაწერე ქართულად ან გერმანულად..."></textarea>
-
 <div class="actions">
 <button class="mic" id="kaMic">🎤 ქართული</button>
 <button class="mic" id="deMic">🎤 Deutsch</button>
@@ -83,7 +81,6 @@ button{
 <div class="panel">
 <label>თარგმანი</label>
 <div id="translated">აქ გამოჩნდება თარგმანი...</div>
-
 <div class="actions">
 <button class="mainbtn" id="speakBtn">🔊 მოსმენა</button>
 <button class="secondary" id="copyBtn">📋 კოპირება</button>
@@ -98,7 +95,6 @@ button{
 "use strict";
 
 const $=id=>document.getElementById(id);
-
 const PLACEHOLDER='აქ გამოჩნდება თარგმანი...';
 
 let recognition=null;
@@ -107,6 +103,9 @@ let sessionId=0;
 let timer=null;
 let requestId=0;
 let speaking=false;
+let micWanted=false;
+let restartTimer=null;
+let lastSpeech='';
 
 function isGeorgian(t){
  return /[\u10A0-\u10FF]/.test(t);
@@ -130,74 +129,54 @@ function cleanSpeech(text){
   .trim();
 }
 
-// მიკროფონის გამორთვა
 function stopMic(message='მიკროფონი გამორთულია'){
-
+ micWanted=false;
  sessionId++;
 
- const old=recognition;
+ clearTimeout(restartTimer);
 
+ const old=recognition;
  recognition=null;
  activeLanguage=null;
-
  updateButtons();
 
  if(old){
   old.onresult=null;
   old.onerror=null;
   old.onend=null;
-
-  try{old.abort()}catch(e){
-   try{old.stop()}catch(err){}
-  }
+  try{old.abort()}catch(e){}
  }
 
  if(message)$('status').textContent=message;
 }
 
-// მიკროფონის ჩართვა
-function startMic(lang){
-
- // იმავე ღილაკზე მეორე დაჭერა = გამორთვა
- if(activeLanguage===lang){
-  stopMic('🔴 მიკროფონი გამორთულია');
-  return;
- }
-
- // მეორე ენის ჩართვისას ძველი ითიშება
- if(activeLanguage!==null){
-  stopMic(null);
- }
+function createRecognition(lang,id){
+ if(!micWanted || id!==sessionId)return;
 
  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 
  if(!SR){
-  $('status').textContent='ამ აპლიკაციაში ხმოვანი ამოცნობა მიუწვდომელია';
+  stopMic('ამ აპლიკაციაში ხმოვანი ამოცნობა მიუწვდომელია');
   return;
  }
 
- const id=++sessionId;
  const rec=new SR();
-
  recognition=rec;
- activeLanguage=lang;
-
- let finished=false;
 
  rec.lang=lang;
- rec.continuous=false;
+ rec.continuous=true;
  rec.interimResults=false;
  rec.maxAlternatives=1;
 
- updateButtons();
+ rec.onstart=function(){
+  if(id!==sessionId || !micWanted)return;
+  $('status').textContent=lang==='ka-GE'
+   ?'🎤 გისმენ... ქართულად ილაპარაკე'
+   :'🎤 Ich höre zu... Sprich Deutsch';
+ };
 
- $('status').textContent=lang==='ka-GE'
-  ?'🎤 გისმენ... ქართულად ილაპარაკე'
-  :'🎤 Ich höre zu... Sprich Deutsch';
-
- // შესწორებული ხმის ამოცნობა
  rec.onresult=function(event){
-  if(id!==sessionId || finished)return;
+  if(id!==sessionId || !micWanted)return;
 
   let text='';
 
@@ -208,57 +187,89 @@ function startMic(lang){
   }
 
   text=cleanSpeech(text);
-  if(!text)return;
+  if(!text || text===lastSpeech)return;
 
-  finished=true;
+  lastSpeech=text;
 
-  // ტექსტი ჯერ ჩაიწეროს
-  $('source').value=text;
+  const source=$('source');
+  const oldText=source.value.trim();
 
-  // შემდეგ დაიწყოს თარგმნა
+  source.value=oldText
+   ?oldText+' '+text
+   :text;
+
   clearTimeout(timer);
   translateText();
 
-  $('status').textContent='ხმა ამოცნობილია ✓';
+  $('status').textContent='ხმა ჩაიწერა ✓';
  };
 
  rec.onerror=function(event){
-  if(id!==sessionId)return;
+  if(id!==sessionId || !micWanted)return;
 
-  const error=event.error;
-
-  stopMic(null);
-
-  if(error==='not-allowed'){
-   $('status').textContent='მიკროფონის ნებართვა ჩართე';
-  }else if(error==='no-speech'){
-   $('status').textContent='ხმა ვერ გავიგე. კიდევ სცადე';
-  }else if(error==='aborted'){
-   $('status').textContent='მიკროფონი გამორთულია';
-  }else{
-   $('status').textContent='მიკროფონის შეცდომა: '+error;
+  if(event.error==='not-allowed' || event.error==='service-not-allowed'){
+   stopMic('მიკროფონის ნებართვა ან ხმოვანი სერვისი მიუწვდომელია');
+  }else if(event.error==='no-speech'){
+   $('status').textContent='გისმენ... ხმა ჯერ არ ისმის';
+  }else if(event.error==='network'){
+   stopMic('ხმოვანი ამოცნობის ქსელური შეცდომა');
+  }else if(event.error!=='aborted'){
+   $('status').textContent='მიკროფონის შეცდომა: '+event.error;
   }
  };
 
  rec.onend=function(){
-  if(id!==sessionId)return;
+  if(id!==sessionId || !micWanted)return;
 
   recognition=null;
-  activeLanguage=null;
-  updateButtons();
 
-  if(!finished){
-   $('status').textContent='მოსმენა დასრულდა. მზად არის';
-  }
+  $('status').textContent='მოსმენა გრძელდება...';
+
+  // თუ მომხმარებელს არ გამოურთავს, მოსმენა ხელახლა დაიწყოს
+  restartTimer=setTimeout(()=>{
+   if(id===sessionId && micWanted && !recognition){
+    createRecognition(lang,id);
+   }
+  },400);
  };
 
  try{
   rec.start();
  }catch(e){
-  if(id===sessionId){
+  if(id===sessionId && micWanted){
    stopMic('მიკროფონი ვერ ჩაირთო. თავიდან სცადე');
   }
  }
+}
+
+function startMic(lang){
+ if(micWanted && activeLanguage===lang){
+  stopMic('🔴 მიკროფონი გამორთულია');
+  return;
+ }
+
+ if(micWanted){
+  stopMic(null);
+ }
+
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+
+ if(!SR){
+  $('status').textContent='ამ აპლიკაციაში ხმოვანი ამოცნობა მიუწვდომელია';
+  return;
+ }
+
+ clearTimeout(restartTimer);
+
+ sessionId++;
+ const id=sessionId;
+
+ micWanted=true;
+ activeLanguage=lang;
+ lastSpeech='';
+
+ updateButtons();
+ createRecognition(lang,id);
 }
 
 $('kaMic').addEventListener('click',()=>startMic('ka-GE'));
@@ -266,7 +277,6 @@ $('deMic').addEventListener('click',()=>startMic('de-DE'));
 
 // თარგმანი
 async function translateText(){
-
  const original=$('source').value.trim();
 
  if(!original){
@@ -296,7 +306,6 @@ async function translateText(){
   $('status').textContent='თარგმნა დასრულდა ✓';
 
  }catch(e){
-
   if(id!==requestId)return;
 
   try{
@@ -318,7 +327,6 @@ async function translateText(){
    }else{
     $('status').textContent='თარგმანი ვერ მოიძებნა';
    }
-
   }catch(err){
    if(id===requestId)$('status').textContent='ინტერნეტთან კავშირი შეამოწმე';
   }
@@ -395,7 +403,6 @@ $('clearBtn').addEventListener('click',()=>{
 
  $('status').textContent='გასუფთავებულია';
 });
-
 </script>
 </body>
 </html>
