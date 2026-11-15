@@ -1,11 +1,10 @@
-<!doctype html>
+space-betweenl>
 <html lang="ka">
-<link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#101b36">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101b35">
+<link rel="manifest" href="./manifest.json">
 <title>Chachia Translator</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1224;--panel:#15213b;--line:#2a3a5e;--accent:#6ee7c2;--muted:#a9b7d0}
@@ -20,15 +19,6 @@ textarea{width:100%;min-height:92px;resize:vertical;border-radius:13px;border:1p
 footer{text-align:center;color:#71819d;font-size:11px;padding:14px}
 </style>
 </head>
- 
-<script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js");
-  });
-}
-</script>
-
 <body>
 <main>
  <header class="brand"><div class="logo">🎙️</div><h1>Chachia Translator</h1><p>ქართული ↔ Deutsch · ხმოვანი თარჯიმანი</p></header>
@@ -56,7 +46,7 @@ if ("serviceWorker" in navigator) {
 </main>
 <script>
 const $=id=>document.getElementById(id);
-let from='ka', recognition=null;
+let from='ka', recognition=null, listeningLang=null, translationTimer=null, translationRequest=0;
 const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
 function setStatus(t){$('status').textContent=t}
 function setDirection(lang){
@@ -66,7 +56,8 @@ function setDirection(lang){
 }
 async function translate(){
  const text=$('source').value.trim();
- if(!text){setStatus('ჯერ ილაპარაკე ან ჩაწერე ტექსტი.');return}
+ if(!text){$('translated').textContent='თარგმანი აქ გამოჩნდება…';setStatus('ჯერ ჩაწერე ტექსტი ან ილაპარაკე.');return}
+ const request=++translationRequest;
  $('translated').textContent='ვთარგმნი…';
  const pair=from==='ka'?'ka|de':'de|ka';
  try{
@@ -75,37 +66,74 @@ async function translate(){
   const data=await res.json();
   const result=data?.responseData?.translatedText;
   if(!result) throw new Error('empty');
+  if(request!==translationRequest)return;
   $('translated').textContent=result;
   setStatus('თარგმანი მზად არის');
- }catch(e){$('translated').textContent='თარგმნა ვერ მოხერხდა. შეამოწმე ინტერნეტი და სცადე თავიდან.';setStatus('კავშირის ან თარგმნის სერვისის შეცდომა')}
+ }catch(e){
+  if(request!==translationRequest)return;
+  $('translated').textContent='თარგმნა ვერ მოხერხდა. შეამოწმე ინტერნეტი და სცადე თავიდან.';
+  setStatus('კავშირის ან თარგმნის სერვისის შეცდომა');
+ }
+}
+function scheduleTranslation(){
+ clearTimeout(translationTimer);
+ translationTimer=setTimeout(()=>translate(),700);
 }
 function listen(lang){
+ if(recognition && listeningLang===lang){
+  setStatus('ვაჩერებ მოსმენას…');
+  recognition.stop();
+  return;
+ }
+ if(recognition){
+  const old=recognition;
+  recognition=null;
+  listeningLang=null;
+  old.onend=null;
+  try{old.stop()}catch(e){}
+ }
  setDirection(lang);
  if(!SpeechRecognition){setStatus('ამ ბრაუზერში ხმოვანი ამოცნობა არ არის მხარდაჭერილი. სცადე Chrome.');return}
  try{
-  if(recognition){recognition.stop();recognition=null}
-  recognition=new SpeechRecognition();
-  recognition.lang=lang==='ka'?'ka-GE':'de-DE';
-  recognition.continuous=false; recognition.interimResults=true; recognition.maxAlternatives=1;
+  const current=new SpeechRecognition();
+  recognition=current;
+  listeningLang=lang;
+  current.lang=lang==='ka'?'ka-GE':'de-DE';
+  current.continuous=true;
+  current.interimResults=true;
+  current.maxAlternatives=1;
   $('source').value='';
-  recognition.onstart=()=>setStatus('გისმენ… ილაპარაკე');
-  recognition.onresult=e=>{
+  $('translated').textContent='თარგმანი აქ გამოჩნდება…';
+  current.onstart=()=>setStatus('გისმენ… მეორედ დააჭირე გასაჩერებლად');
+  current.onresult=e=>{
    let finalText='', interim='';
-   for(let i=e.resultIndex;i<e.results.length;i++){
+   for(let i=0;i<e.results.length;i++){
     const t=e.results[i][0].transcript;
-    if(e.results[i].isFinal) finalText+=t; else interim+=t;
+    if(e.results[i].isFinal) finalText+=t+' ';
+    else interim+=t;
    }
-   $('source').value=finalText||interim;
-   if(finalText) translate();
+   $('source').value=(finalText+interim).trim();
   };
-  recognition.onerror=e=>setStatus('მიკროფონის შეცდომა: '+e.error+'. შეამოწმე ნებართვა.');
-  recognition.onend=()=>{if($('status').textContent==='გისმენ… ილაპარაკე')setStatus('მოსმენა დასრულდა')};
-  recognition.start();
- }catch(e){setStatus('მიკროფონის ჩართვა ვერ მოხერხდა')}
+  current.onerror=e=>setStatus('მიკროფონის შეცდომა: '+e.error+'. შეამოწმე ნებართვა.');
+  current.onend=()=>{
+   if(recognition===current){
+    recognition=null;
+    listeningLang=null;
+    if($('source').value.trim()) translate();
+    else setStatus('მოსმენა დასრულდა');
+   }
+  };
+  current.start();
+ }catch(e){
+  recognition=null;
+  listeningLang=null;
+  setStatus('მიკროფონის ჩართვა ვერ მოხერხდა');
+ }
 }
 $('kaMic').onclick=()=>listen('ka');
 $('deMic').onclick=()=>listen('de');
-$('translate').onclick=translate;
+$('source').addEventListener('input',scheduleTranslation);
+$('translate').onclick=()=>{clearTimeout(translationTimer);translate()};
 $('speak').onclick=()=>{
  const t=$('translated').textContent.trim();
  if(!t||t.includes('აქ გამოჩნდება')||t.includes('ვერ მოხერხდა'))return;
@@ -116,6 +144,13 @@ $('copy').onclick=async()=>{
  try{await navigator.clipboard.writeText($('translated').textContent);setStatus('კოპირებულია')}
  catch(e){setStatus('კოპირება ვერ მოხერხდა')}
 };
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(()=>{});
+  });
+}
 </script>
 </body>
 </html>
